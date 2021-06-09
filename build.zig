@@ -47,4 +47,6 @@ pub fn build(b: *std.build.Builder) !void {
     qemu.dependOn(&run_qemu.step);
 
     run_qemu.step.dependOn(&exe.step);
+
+    b.default_step.dependOn(&run_qemu.step);
 }
