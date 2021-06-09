@@ -11,7 +11,6 @@ SECTIONS {
     .rodata : ALIGN(4k) {
         *(.rodata)
 
-        /*
         __debug_info_start = .;
         KEEP(*(.debug_info))
         __debug_info_end = .;
@@ -27,7 +26,6 @@ SECTIONS {
         __debug_ranges_start = .;
         KEEP(*(.debug_ranges))
         __debug_ranges_end = .;
-        */
     }
 
     .data : ALIGN(4k) {
