@@ -1,0 +1,255 @@
+const std = @import("std");
+
+const builtin = std.builtin;
+
+const fmt = std.fmt;
+
+const Colour = enum(u8) {
+    black,
+    blue,
+    green,
+    cyan,
+    red,
+    magenta,
+    brown,
+    light_grey,
+    light_blue,
+    light_green,
+    light_cyan,
+    light_red,
+    light_magenta,
+    light_brown,
+    white,
+};
+
+const MultiBoot = packed struct {
+    magic: i32,
+    flags: i32,
+    checksum: i32,
+};
+
+const ALIGN = 1 << 0;
+const MEMINFO = 1 << 1;
+const MAGIC = 0x1BADB002;
+const FLAGS = ALIGN | MEMINFO;
+
+export var multiboot align(4) linksection(".multiboot") = MultiBoot {
+    .magic = MAGIC,
+    .flags = FLAGS,
+    .checksum = -(MAGIC + FLAGS),
+};
+
+export var stack_bytes: [16 * 1024] u8 align(16) linksection(".bss") = undefined;
+
+extern var __debug_info_start: u8;
+
+extern var __debug_info_end: u8;
+
+extern var __debug_abbrev_start: u8;
+
+extern var __debug_abbrev_end: u8;
+
+extern var __debug_line_start: u8;
+
+extern var __debug_line_end: u8;
+
+extern var __debug_ranges_start: u8;
+
+extern var __debug_ranges_end: u8;
+
+const stack_bytes_slice = stack_bytes[0..];
+
+const ColourCode = packed struct {
+    colour: u8,
+
+    fn init(foreground: Colour, background: Colour) ColourCode {
+        return ColourCode { .colour = (@enumToInt(background) << 4) | @enumToInt(foreground) };
+    }
+};
+
+const ScreenChar = packed struct {
+    char: u8,
+    colour_code: ColourCode,
+
+    fn init(char: u8, colour_code: ColourCode) ScreenChar {
+        return ScreenChar { .char = char, .colour_code = colour_code };
+    }
+};
+
+const VGA_WIDTH = 80;
+
+const VGA_HEIGHT = 25;
+
+const NoError = error{};
+
+const Terminal = struct {
+    row: usize = 0,
+
+    column: usize = 0,
+
+    current_colour: ColourCode = ColourCode.init(.light_grey, .black),
+
+    const Self = @This();
+
+    const buffer = @intToPtr([*]volatile ScreenChar, 0xB8000);
+
+    pub const writer = std.io.Writer(*Terminal, NoError, writer_write); 
+    fn init() Terminal {
+        return Terminal {};
+    }
+
+    fn putCharAt(self: *Self, screen_char: u8, x: usize, y: usize) void {
+        if (screen_char == '\n') {
+            self.row += 1;
+
+            self.column = 0;
+
+            return;
+        }
+
+        const index = y * VGA_WIDTH + x;
+
+        buffer[index].char = screen_char;
+        buffer[index].colour_code = self.current_colour;
+    }
+
+    fn putChar(self: *Self, screen_char: u8) void {
+        self.putCharAt(screen_char, self.column, self.row);
+
+        if (screen_char != '\n') {
+            self.column += 1;
+        }
+
+        if (self.column == VGA_WIDTH) {
+            self.column = 0;
+
+            self.row += 1;
+        }
+
+        if (self.row == VGA_HEIGHT) {
+            self.scroll();
+        }
+    }
+
+    fn writer_write(self: *Self, msg: []const u8) NoError!usize {
+        self.write(msg);
+
+        self.row += 1;
+
+        self.column = 0;
+
+        return msg.len;
+    }
+
+    fn write(self: *Self, msg: []const u8) void {
+        for (msg) |c| {
+            self.putChar(c);
+        }
+    }
+
+    fn writeln(self: *Self, msg: []const u8) void {
+        for (msg) |c| {
+            self.putChar(c);
+        }
+
+        self.putChar('\n');
+    }
+
+    fn scroll(self: *Self) void {
+        // Skip the first row
+        var y: usize = 1;
+
+        while (y < VGA_HEIGHT) : (y += 1) {
+            var x: usize = 0;
+
+            while (x < VGA_WIDTH) : (x += 1) {
+                const index = y * VGA_WIDTH + x;
+
+                self.putCharAt(buffer[index].char, x, y - 1);
+            }
+        }
+
+        self.write_row_absolute(' ', VGA_HEIGHT - 1);
+    }
+
+    fn clear(self: *Self, colour: ?ColourCode) void {
+        var y: usize = 0;
+
+        while (y < VGA_HEIGHT): (y += 1) {
+            var x: usize = 0;
+
+            while (x < VGA_WIDTH): (x += 1) {
+                const index = y * VGA_WIDTH + x;
+
+                self.putCharAt(' ', x, y);
+
+                if (colour) |new_colour| {
+                    buffer[index].colour_code = new_colour;
+                }
+            }
+        }
+
+        self.row = 0;
+
+        self.column = 0;
+    }
+
+    fn write_row_absolute(self: *Self, screen_char: u8, row_write: usize) void {
+        var i: usize = 0;
+
+        while (i < VGA_WIDTH) : (i += 1) {
+            const index = row_write * VGA_WIDTH + i;
+
+            self.putCharAt(screen_char, i, row_write);
+        }
+
+        self.column = 0;
+
+        self.row = row_write + 1;
+    }
+
+    fn write_row(self: *Self, screen_char: u8) void {
+        self.write_row_absolute(screen_char, self.row); 
+    }
+};
+
+export fn _start() callconv(.Naked) noreturn {
+    @call(.{ .stack = stack_bytes_slice }, kmain, .{}); 
+
+    while (true) {}
+}
+
+pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
+    @setCold(true);
+
+    var term = Terminal.init();
+
+    const out = Terminal.writer{ .context = &term };
+
+    term.clear(ColourCode.init(.red, .red));
+
+    term.write_row('=');
+
+    out.writeAll("!!!KERNEL PANIC!!!") catch |e| switch (e) {};
+
+    out.writeAll(msg) catch |e| switch (e) {};
+
+    term.write_row('=');
+
+    while (true) {}
+}
+
+fn kmain() void {
+    var term = Terminal.init();
+
+    const out = Terminal.writer{ .context = &term };
+
+    term.clear(null);
+
+    //out.writeByteNTimes(0, 5) catch |e| switch (e) {};
+
+    out.print("hello, {}", .{100}) catch |e| switch (e) {};
+
+    @panic("Something");
+}
+
