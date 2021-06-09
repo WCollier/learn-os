@@ -136,4 +136,8 @@ pub const Terminal = struct {
 
         cursor.returnLine();
     }
+
+    pub fn print(self: *Self, comptime msg: []const u8, args: anytype) void {
+        self.writer().print(msg, args) catch |e| switch (e) {};
+    }
 };

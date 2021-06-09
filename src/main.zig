@@ -79,7 +79,7 @@ fn kmain() void {
     var i: usize = 0;
 
     while (i < 200) : (i += 1) {
-        term.writer().print("hello{}" ++ "\n", .{i}) catch |e| switch (e) {};
+        term.print("hello{}\n", .{i});
     }
 
     //@panic("Something");
