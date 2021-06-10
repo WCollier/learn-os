@@ -25,7 +25,7 @@ pub const Terminal = struct {
 
     const Error = error{};
 
-    pub const TerminalWriter = std.io.Writer(*Self, Error, terminalWriter); 
+    pub const Writer = std.io.Writer(*Self, Error, terminalWriter); 
 
     pub fn init() Terminal {
         return Terminal {
@@ -128,7 +128,7 @@ pub const Terminal = struct {
     }
 
     pub fn writer(self: *Self) std.io.Writer(*Self, Error, terminalWriter) {
-        return TerminalWriter{ .context = self };
+        return Writer{ .context = self };
     }
 
     pub fn log(self: *Self, msg: []const u8) void {
