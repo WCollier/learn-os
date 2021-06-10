@@ -25,7 +25,7 @@ pub const Terminal = struct {
 
     const Error = error{};
 
-    const TerminalWriter = std.io.Writer(*Self, Error, terminalWriter); 
+    pub const TerminalWriter = std.io.Writer(*Self, Error, terminalWriter); 
 
     pub fn init() Terminal {
         return Terminal {

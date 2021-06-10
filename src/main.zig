@@ -27,22 +27,6 @@ export var multiboot align(4) linksection(".multiboot") = MultiBoot {
 
 export var stack_bytes: [16 * 1024] u8 align(16) linksection(".bss") = undefined;
 
-extern var __debug_info_start: u8;
-
-extern var __debug_info_end: u8;
-
-extern var __debug_abbrev_start: u8;
-
-extern var __debug_abbrev_end: u8;
-
-extern var __debug_line_start: u8;
-
-extern var __debug_line_end: u8;
-
-extern var __debug_ranges_start: u8;
-
-extern var __debug_ranges_end: u8;
-
 const stack_bytes_slice = stack_bytes[0..];
 
 export fn _start() callconv(.Naked) noreturn {
@@ -63,6 +47,9 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
     term.writeRow('=');
 
     term.log("!!!KERNEL PANIC!!!");
+
+    // TODO: For after paging, heap allocation, etc
+    //term.print("{}", .{error_return_trace}); 
 
     term.log(msg);
 
