@@ -36,6 +36,8 @@ pub fn build(b: *std.build.Builder) !void {
         "qemu-system-i386",
         "-kernel",
         "zig-out/bin/learn-os",
+        "-serial",
+        "stdio",
     });
 
     if (run_gdb) {

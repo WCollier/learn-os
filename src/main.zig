@@ -4,6 +4,8 @@ const Terminal = @import("Terminal.zig").Terminal;
 
 const ColourCode = @import("Vga.zig").ColourCode;
 
+const Serial = @import("Serial.zig").Serial;
+
 const builtin = std.builtin;
 
 const fmt = std.fmt;
@@ -65,9 +67,13 @@ fn kmain() void {
 
     var i: usize = 0;
 
+    var serial = Serial.init();
+
     while (i < 200) : (i += 1) {
         term.print("hello{}\n", .{i});
     }
+
+    serial.print("Hello\n", .{});
 
     //@panic("Something");
 }
