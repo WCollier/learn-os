@@ -1,5 +1,7 @@
 const VGA_WIDTH = @import("Vga.zig").VGA_WIDTH;
 
+const x86 = @import("x86.zig");
+
 pub const Cursor = struct {
     pos: usize = 0,
 
@@ -14,29 +16,29 @@ pub const Cursor = struct {
     }
 
     fn enable() void {
-        outb(CtrlReg, 0x0A);
+        x86.outb(CtrlReg, 0x0A);
 
-        outb(DataReg, 0x00);
+        x86.outb(DataReg, 0x00);
     }
 
     fn getPos(self: *Self) usize {
-        outb(CtrlReg, 0x0F);
+        x86.outb(CtrlReg, 0x0F);
 
-        self.pos = 0 | inb(DataReg);
+        self.pos = 0 | x86.inb(DataReg);
 
-        outb(CtrlReg, 0x0E);
+        x86.outb(CtrlReg, 0x0E);
 
-        self.cursor |= @as(u16, inb(DataReg)) << 8;
+        self.cursor |= @as(u16, x86.inb(DataReg)) << 8;
     }
 
     pub fn move(self: *Self) void {
-        outb(CtrlReg, 0x0F);
+        x86.outb(CtrlReg, 0x0F);
 
-        outb(DataReg, @truncate(u8, self.pos));
+        x86.outb(DataReg, @truncate(u8, self.pos));
 
-        outb(CtrlReg, 0x0E);
+        x86.outb(CtrlReg, 0x0E);
 
-        outb(DataReg, @truncate(u8, self.pos >> 8));
+        x86.outb(DataReg, @truncate(u8, self.pos >> 8));
     }
 
     pub fn column(self: *Self) usize {
@@ -52,16 +54,5 @@ pub const Cursor = struct {
         self.pos += VGA_WIDTH - self.column();
 
         self.move();
-    }
-
-    fn inb(port: u16) u8 {
-        return asm volatile ("inb %[port], %[result]" 
-            : [result] "={al}" (-> u8)
-            : [port] "N{dx}" (port));
-    }
-
-    fn outb(port: u16, code: u8) void {
-        asm volatile ("outb %[code], %[port]" : : [code] "{al}" (code), 
-            [port] "N{dx}" (port));
     }
 };
