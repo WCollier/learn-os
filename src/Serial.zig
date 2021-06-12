@@ -17,6 +17,40 @@ const Reg4: u16 = Com1 + 4;
 
 const Reg5: u16 = Com1 + 5;
 
+fn SerialWriter() type {
+    return struct {
+        const Error = error{};
+
+        const Writer = std.io.Writer(*Self, Error, write);
+
+        const Self = @This();
+
+        fn write(self: *Self, msg: []const u8) Error!usize {
+            Serial.write(msg);
+
+            return msg.len;
+        }
+
+        pub fn writer(self: *Self) std.io.Writer(*Self, Error, write) {
+            return Writer{ .context = self };
+        }
+
+        pub fn log(self: *Self, msg: []const u8) void {
+            self.writer().writeAll(msg) catch |e| switch (e) {};
+        }
+
+        pub fn print(self: *Self, comptime msg: []const u8, args: anytype) void {
+            self.writer().print(msg, args) catch |e| switch (e) {};
+        }
+    };
+}
+
+// TODO: Add SerialReader
+
+pub fn serialWriter() SerialWriter() {
+    return .{};
+}
+
 pub const Serial = struct {
     const Error = error{};
 
@@ -25,7 +59,7 @@ pub const Serial = struct {
     // TODO: Add error
     pub const Writer = std.io.Writer(*Self, Error, serialWriter); 
 
-    pub fn init() Self {
+    pub fn init() void {
         x86.outb(Reg1, 0x00);
 
         x86.outb(Reg3, 0x80);
@@ -46,12 +80,9 @@ pub const Serial = struct {
 
         // TODO: Error handling here
         if (x86.inb(Reg0) != 0xAE) {
-            return Serial{};
         }
 
         x86.outb(Reg4, 0x0F);
-
-        return Serial{};
     }
 
     pub fn receive() u8 {
@@ -68,27 +99,9 @@ pub const Serial = struct {
         x86.outb(Com1, send);
     }
 
-    pub fn write(self: *Self, msg: []const u8) void {
+    pub fn write(msg: []const u8) void {
         for (msg) |char| {
             writeChar(char);
         }
-    }
-
-    fn serialWriter(self: *Self, msg: []const u8) Error!usize {
-        self.write(msg);
-
-        return msg.len;
-    }
-
-    pub fn writer(self: *Self) std.io.Writer(*Self, Error, serialWriter) {
-        return Writer{ .context = self };
-    }
-
-    pub fn log(self: *Self, msg: []const u8) void {
-        self.writer().writeAll(msg) catch |e| switch (e) {};
-    }
-
-    pub fn print(self: *Self, comptime msg: []const u8, args: anytype) void {
-        self.writer().print(msg, args) catch |e| switch (e) {};
     }
 };
