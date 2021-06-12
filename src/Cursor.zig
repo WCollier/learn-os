@@ -28,7 +28,7 @@ pub const Cursor = struct {
 
         x86.outb(CtrlReg, 0x0E);
 
-        self.cursor |= @as(u16, x86.inb(DataReg)) << 8;
+        self.pos |= @as(u16, x86.inb(DataReg)) << 8;
     }
 
     pub fn move(self: *Self) void {
