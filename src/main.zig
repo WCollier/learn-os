@@ -1,10 +1,12 @@
 const std = @import("std");
 
-const Terminal = @import("Terminal.zig").Terminal;
-
 const ColourCode = @import("Vga.zig").ColourCode;
 
+const Terminal = @import("Terminal.zig").Terminal;
+
 const Serial = @import("Serial.zig").Serial;
+
+const Log = @import("Log.zig"); 
 
 const builtin = std.builtin;
 
@@ -40,40 +42,32 @@ export fn _start() callconv(.Naked) noreturn {
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     @setCold(true);
 
-    var term = Terminal.init();
+    Terminal.clear(ColourCode.init(.red, .red));
 
-    const writer = term.writer();
+    Terminal.writeRow('=');
 
-    term.clear(ColourCode.init(.red, .red));
-
-    term.writeRow('=');
-
-    term.log("!!!KERNEL PANIC!!!");
+    std.log.crit("!!!KERNEL PANIC!!!\n{s}", .{msg});
 
     // TODO: For after paging, heap allocation, etc
-    //term.print("{}", .{error_return_trace}); 
+    //termWriter.print("{}", .{error_return_trace}); 
 
-    term.log(msg);
-
-    term.writeRow('=');
+    Terminal.writeRow('=');
 
     while (true) {}
 }
 
-fn kmain() void {
-    var term = Terminal.init();
+pub const log = Log.log;
 
-    term.clear(null);
+fn kmain() void {
+    Terminal.clear(null);
 
     var i: usize = 0;
 
-    var serial = Serial.init();
+    Serial.init();
 
-    while (i < 200) : (i += 1) {
-        term.print("hello{}\n", .{i});
+    while (i < 26) : (i += 1) {
+        std.log.info("Hello{d}", .{i});
     }
-
-    serial.print("Hello\n", .{});
 
     //@panic("Something");
 }
