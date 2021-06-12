@@ -57,7 +57,7 @@ pub const Serial = struct {
     const Self = @This();
 
     // TODO: Add error
-    pub const Writer = std.io.Writer(*Self, Error, serialWriter); 
+    pub const Writer = std.io.Writer(*Self, Error, serialWriter);
 
     pub fn init() void {
         x86.outb(Reg1, 0x00);
@@ -79,8 +79,7 @@ pub const Serial = struct {
         x86.outb(Reg0, 0xAE);
 
         // TODO: Error handling here
-        if (x86.inb(Reg0) != 0xAE) {
-        }
+        if (x86.inb(Reg0) != 0xAE) {}
 
         x86.outb(Reg4, 0x0F);
     }
@@ -93,7 +92,7 @@ pub const Serial = struct {
     }
 
     pub fn writeChar(send: u8) void {
-        // While is transit empty 
+        // While is transit empty
         while ((x86.inb(Reg5) & 0x20) == 0) {}
 
         x86.outb(Com1, send);

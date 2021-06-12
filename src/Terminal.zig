@@ -18,7 +18,7 @@ fn TerminalWriter() type {
     return struct {
         const Error = error{};
 
-        const Writer = std.io.Writer(*Self, Error, write); 
+        const Writer = std.io.Writer(*Self, Error, write);
 
         const Self = @This();
 
@@ -109,7 +109,7 @@ pub const Terminal = struct {
         const last_row_index: usize = VGA_HEIGHT - 1;
 
         const buffer_array = bufferAsSlice();
-        
+
         // Copy the second row..last row (2nd param) to the first row..last_row (1st param)
         std.mem.copy(ScreenChar, buffer_array[0..last_row], buffer_array[first_row..VGA_SIZE]);
 
@@ -142,7 +142,7 @@ pub const Terminal = struct {
     }
 
     pub fn writeRow(screen_char: u8) void {
-        writeRowAbsolute(screen_char, cursor.row()); 
+        writeRowAbsolute(screen_char, cursor.row());
     }
 
     fn screenChar(char: u8) ScreenChar {

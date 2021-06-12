@@ -1,2 +1,1 @@
-pub const Os = struct {
-};
+pub const Os = struct {};

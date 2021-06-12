@@ -12,7 +12,7 @@ pub const Cursor = struct {
     const Self = @This();
 
     pub fn init() Cursor {
-        return Cursor {};
+        return Cursor{};
     }
 
     fn enable() void {

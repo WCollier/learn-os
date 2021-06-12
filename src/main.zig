@@ -6,7 +6,7 @@ const Terminal = @import("Terminal.zig").Terminal;
 
 const Serial = @import("Serial.zig").Serial;
 
-const Log = @import("Log.zig"); 
+const Log = @import("Log.zig");
 
 const builtin = std.builtin;
 
@@ -23,18 +23,18 @@ const MEMINFO = 1 << 1;
 const MAGIC = 0x1BADB002;
 const FLAGS = ALIGN | MEMINFO;
 
-export var multiboot align(4) linksection(".multiboot") = MultiBoot {
+export var multiboot align(4) linksection(".multiboot") = MultiBoot{
     .magic = MAGIC,
     .flags = FLAGS,
     .checksum = -(MAGIC + FLAGS),
 };
 
-export var stack_bytes: [16 * 1024] u8 align(16) linksection(".bss") = undefined;
+export var stack_bytes: [16 * 1024]u8 align(16) linksection(".bss") = undefined;
 
 const stack_bytes_slice = stack_bytes[0..];
 
 export fn _start() callconv(.Naked) noreturn {
-    @call(.{ .stack = stack_bytes_slice }, kmain, .{}); 
+    @call(.{ .stack = stack_bytes_slice }, kmain, .{});
 
     while (true) {}
 }
@@ -49,7 +49,7 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
     std.log.crit("!!!KERNEL PANIC!!!\n{s}", .{msg});
 
     // TODO: For after paging, heap allocation, etc
-    //termWriter.print("{}", .{error_return_trace}); 
+    //termWriter.print("{}", .{error_return_trace});
 
     Terminal.writeRow('=');
 
@@ -71,4 +71,3 @@ fn kmain() void {
 
     //@panic("Something");
 }
-
