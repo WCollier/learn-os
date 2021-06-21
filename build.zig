@@ -2,12 +2,13 @@ const std = @import("std");
 const builtin = std.builtin;
 
 pub fn build(b: *std.build.Builder) !void {
-    const target = b.standardTargetOptions(.{
-        .default_target = std.zig.CrossTarget.parse(.{
-            .arch_os_abi = "i386-freestanding-gnu",
-            .cpu_features = "pentiumpro",
-        }) catch @panic("Failed to create target"),
-    });
+    const target = std.zig.CrossTarget{
+        .os_tag = .freestanding,
+        .cpu_arch = .i386,
+        .cpu_model = .{
+            .explicit = &std.Target.x86.cpu._i386,
+        },
+    };
 
     const mode = b.standardReleaseOptions();
 
@@ -38,6 +39,7 @@ pub fn build(b: *std.build.Builder) !void {
         "zig-out/bin/learn-os",
         "-serial",
         "stdio",
+        "-no-reboot",
     });
 
     if (run_gdb) {
