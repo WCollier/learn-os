@@ -40,6 +40,8 @@ pub fn build(b: *std.build.Builder) !void {
         "-serial",
         "stdio",
         "-no-reboot",
+        "-d",
+        "cpu_reset",
     });
 
     if (run_gdb) {
