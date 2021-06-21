@@ -8,6 +8,8 @@ const Serial = @import("Serial.zig").Serial;
 
 const Log = @import("Log.zig");
 
+const Gdt = @import("Gdt.zig");
+
 const builtin = std.builtin;
 
 const fmt = std.fmt;
@@ -46,7 +48,12 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
 
     Terminal.writeRow('=');
 
-    std.log.crit("!!!KERNEL PANIC!!!\n{s}", .{msg});
+    std.log.crit("!!!KERNEL PANIC!!!", .{});
+
+    // Better way to do an empty line?
+    if (msg.len > 0) {
+        std.log.crit("\n{s}", .{msg});
+    }
 
     // TODO: For after paging, heap allocation, etc
     //termWriter.print("{}", .{error_return_trace});
@@ -61,13 +68,11 @@ pub const log = Log.log;
 fn kmain() void {
     Terminal.clear(null);
 
-    var i: usize = 0;
-
     Serial.init();
 
-    while (i < 26) : (i += 1) {
-        std.log.info("Hello{d}", .{i});
-    }
+    std.log.info("Boot!", .{});
+
+    Gdt.init();
 
     //@panic("Something");
 }
