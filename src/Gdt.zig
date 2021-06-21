@@ -2,33 +2,46 @@ const std = @import("std");
 
 const GRANULARITY = 0xFFFFF;
 
-const PROTECTED = 1 << 2;
+const KERNEL_DATA = 0x10;
 
-const BLOCKS_4K = 1 << 3;
+const TSS_ENTRY_INDEX = gdt_entries.len - 1;
+
+const TSS_OFFSET: u16 = 0x28;
 
 const Entry = packed struct {
     limit_low: u16,
     base_low: u24,
     access: Access,
-    //base_low: u16,
-    //base_middle: u8,
-    //access: u8,
     limit_high: u4,
     flags: Flags,
-    //flags: u4,
     base_high: u8,
 
-    fn init(base: usize, limit: usize, access: Access, flags: Flags) Entry {
+    fn init(base: u32, limit: u20, access: Access, flags: Flags) Entry {
         return Entry{
             .limit_low = @truncate(u16, limit),
             .base_low = @truncate(u24, base), 
-            .access = access, 
-            //.base_low = @truncate(u16, base),
-            //.base_middle = @truncate(u8, base >> 16),
-            //.access = @truncate(u8, access),
+            // Have to do this manually for some reason...
+            // Doing below produces a triple fault (for some reason) (a bug?)
+            //.access = access,
+            .access = .{
+                .accessed = access.accessed,
+                .read_write = access.read_write,
+                .direction_conforming = access.direction_conforming,
+                .executable = access.executable,
+                .descriptor = access.descriptor,
+                .privilege = access.privilege,
+                .present = access.present
+            },
             .limit_high = @truncate(u4, limit >> 16),
-            .flags = flags,
-            //.flags = @truncate(u4, flags),
+            // Have to do this manually for some reason...
+            // Doing below produces a triple fault (for some reason) (a bug?)
+            // .flags = flags,
+            .flags = .{
+                .reserved = flags.reserved,
+                .is_64 = flags.is_64,
+                .bit_size = flags.bit_size,
+                .granulaity = flags.granulaity,
+            },
             .base_high = @truncate(u8, base >> 24),
         };
     }
@@ -40,7 +53,7 @@ const Access = packed struct {
     direction_conforming: bool,
     executable: bool,
     descriptor: bool,
-    priv: u2,
+    privilege: u2,
     present: bool,
 };
 
@@ -54,7 +67,44 @@ const Flags = packed struct {
     granulaity: bool,
 };
 
-pub const Ptr = packed struct {
+const Tss = packed struct {
+    prev: u16,
+    reserved1: u16,
+    esp0: Register32,
+    ss0: Register16,
+    esp1: Register32,
+    ss1: Register16,
+    ss2: Register32,
+    cr3: Register32,
+    eip: Register32,
+    eflags: Register32,
+    eax: Register32,
+    ecx: Register32,
+    edx: Register32,
+    ebx: Register32,
+    esp: Register32,
+    ebp: Register32,
+    esi: Register32,
+    edi: Register32,
+    es: Register16,
+    cs: Register16,
+    ss: Register16,
+    ds: Register16,
+    fs: Register16,
+    gs: Register16,
+    ldtr: Register16,
+    reserved2: u16,
+    io_permissions_base_offset: u16,
+};
+
+const Register16 = packed struct {
+    reg: u16,
+    reserved: u16,
+};
+
+const Register32 = u32;
+
+const Ptr = packed struct {
     limit: u16,
     base: *const Entry,
 };
@@ -65,7 +115,7 @@ const NULL_SEGMENT: Access = .{
     .direction_conforming = false,
     .executable = false,
     .descriptor = false,
-    .priv = 0,
+    .privilege = 0,
     .present = false,
 };
 
@@ -75,7 +125,7 @@ const KERNEL_CODE_SEGMENT: Access = .{
     .direction_conforming = false,
     .executable = true,
     .descriptor = true,
-    .priv = 0,
+    .privilege = 0,
     .present = true,
 };
 
@@ -85,7 +135,7 @@ const KERNEL_DATA_SEGMENT: Access = .{
     .direction_conforming = false,
     .executable = false,
     .descriptor = true,
-    .priv = 0,
+    .privilege = 0,
     .present = true,
 };
 
@@ -95,7 +145,7 @@ const USER_CODE_SEGMENT: Access = .{
     .direction_conforming = false,
     .executable = true,
     .descriptor = true,
-    .priv = 3,
+    .privilege = 3,
     .present = true,
 };
 
@@ -105,7 +155,17 @@ const USER_DATA_SEGMENT: Access = .{
     .direction_conforming = false,
     .executable = false,
     .descriptor = true,
-    .priv = 3,
+    .privilege = 3,
+    .present = true,
+};
+
+const TSS_SEGMENT: Access = .{ 
+    .accessed = true,
+    .read_write = false,
+    .direction_conforming = false,
+    .executable = true,
+    .descriptor = false,
+    .privilege = 0,
     .present = true,
 };
 
@@ -122,13 +182,23 @@ const FLAGS: Flags = .{
     .granulaity = true,
 };
 
-const gdt_entries align(4) = [_]Entry{
+var gdt_entries align(4) = [_]Entry{
     Entry.init(0, 0, NULL_SEGMENT, NULL_FLAGS),
     Entry.init(0, GRANULARITY, KERNEL_CODE_SEGMENT, FLAGS),
     Entry.init(0, GRANULARITY, KERNEL_DATA_SEGMENT, FLAGS),
     Entry.init(0, GRANULARITY, USER_CODE_SEGMENT, FLAGS),
     Entry.init(0, GRANULARITY, USER_DATA_SEGMENT, FLAGS),
     Entry.init(0, 0, NULL_SEGMENT, NULL_FLAGS),
+};
+
+const tss_entry: Tss = {
+    var tss = std.mem.zeroes(Tss);
+
+    tss.ss0.reg = KERNEL_DATA;
+
+    tss.io_permissions_base_offset = @sizeOf(Tss);
+
+    return tss;
 };
 
 const gdt_ptr = Ptr{
@@ -159,4 +229,10 @@ comptime {
 
 pub fn init() void {
     loadGdt(&gdt_ptr);
+
+    // Must be separate for some reason...
+    gdt_entries[TSS_ENTRY_INDEX] = Entry.init(@ptrToInt(&tss_entry), @sizeOf(Tss) - 1, TSS_SEGMENT, NULL_FLAGS);
+
+    asm volatile ("ltr %[offset]" : : [offset] "r" (TSS_OFFSET));
 }
+
