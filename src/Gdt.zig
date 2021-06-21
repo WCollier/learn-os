@@ -54,7 +54,7 @@ const Flags = packed struct {
     granulaity: bool,
 };
 
-pub const GdtPtr = packed struct {
+pub const Ptr = packed struct {
     limit: u16,
     base: *const Entry,
 };
@@ -131,12 +131,12 @@ const gdt_entries align(4) = [_]Entry{
     Entry.init(0, 0, NULL_SEGMENT, NULL_FLAGS),
 };
 
-const gdt_ptr = GdtPtr{
+const gdt_ptr = Ptr{
     .limit = @as(u16, @sizeOf(@TypeOf(gdt_entries))),
     .base = &gdt_entries[0],
 };
 
-extern fn loadGdt(ptr: *const GdtPtr)void;
+extern fn loadGdt(ptr: *const Ptr)void;
 
 comptime {
    asm (
