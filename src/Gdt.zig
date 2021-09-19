@@ -8,6 +8,8 @@ const TSS_ENTRY_INDEX = gdt_entries.len - 1;
 
 const TSS_OFFSET: u16 = 0x28;
 
+pub const KERNEL_CODE_OFFSET = 0x08;
+
 const Entry = packed struct {
     limit_low: u16,
     base_low: u24,

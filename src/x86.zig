@@ -12,3 +12,16 @@ pub fn outb(port: u16, code: u8) void {
           [port] "N{dx}" (port)
     );
 }
+
+pub fn io_wait() void {
+    outb(0x80, 0);
+}
+
+pub fn hang() void {
+    while (true) {
+        asm volatile (
+            \\cli
+            \\hlt
+        );
+    }
+}

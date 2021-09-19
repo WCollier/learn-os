@@ -10,6 +10,12 @@ const Log = @import("Log.zig");
 
 const Gdt = @import("Gdt.zig");
 
+const Idt = @import("Idt.zig");
+
+const Isr = @import("Isr.zig");
+
+const Pic = @import("pic.zig");
+
 const builtin = std.builtin;
 
 const fmt = std.fmt;
@@ -52,7 +58,7 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
 
     // Better way to do an empty line?
     if (msg.len > 0) {
-        std.log.crit("\n{s}", .{msg});
+        std.log.crit("{s}", .{msg});
     }
 
     // TODO: For after paging, heap allocation, etc
@@ -73,6 +79,12 @@ fn kmain() void {
     std.log.info("Boot!", .{});
 
     Gdt.init();
+
+    Idt.init();
+
+    Isr.init();
+
+    Pic.remap();
 
     //@panic("Something");
 }
